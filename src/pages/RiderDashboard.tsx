@@ -249,7 +249,7 @@ const RiderDashboard = () => {
         setSubmitting(false);
       }
     },
-    (error) => {
+    () => {
       // 🔥 THIS IS IMPORTANT
       toast.error("Location permission denied");
       setSubmitting(false);
@@ -427,3 +427,295 @@ const RiderDashboard = () => {
 };
 
 export default RiderDashboard;
+
+
+
+
+
+
+
+
+
+
+
+// import { useEffect, useRef, useState } from "react";
+// import { useAppData } from "../context/AppContext";
+// import { useSocket } from "../context/SocketContext";
+// import axios from "axios";
+// import { riderService } from "../main";
+// import toast from "react-hot-toast";
+// import { BiUpload } from "react-icons/bi";
+// import type { IOrder } from "../types";
+// import audio from "../assets/faaah.mp3";
+// import RiderOrderRequest from "../components/RiderOrderRequest";
+// import RiderCurrentOrder from "../components/RiderCurrentOrder";
+// import RiderOrderMap from "../components/RiderOrderMap";
+
+// interface IRider {
+//   _id: string;
+//   phoneNumber: string;
+//   aadharNumber: string;
+//   drivingLicenseNumber: string;
+//   picture: string;
+//   isVerified: boolean;
+//   isAvailble: boolean;
+// }
+
+// const RiderDashboard = () => {
+//   const { user } = useAppData();
+//   const { socket } = useSocket();
+
+//   const [profile, setProfile] = useState<IRider | null>(null);
+//   const [loading, setLoading] = useState(true);
+//   const [toggling, setToggling] = useState(false);
+//   const [incomingOrders, setIncomingOrders] = useState<string[]>([]);
+//   const [currentOrder, setCurrentOrder] = useState<IOrder | null>(null);
+//   const [audioUnlocked, setAudioUnlocked] = useState(false);
+//   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+//   const [phoneNumber, setPhoneNumber] = useState("");
+//   const [aadharNumber, setaadharNumber] = useState("");
+//   const [drivingLicenseNumber, setDrivingLicenseNumber] = useState("");
+//   const [image, setImage] = useState<File | null>(null);
+//   const [submitting, setSubmitting] = useState(false);
+
+//   useEffect(() => {
+//     audioRef.current = new Audio(audio);
+//     audioRef.current.preload = "auto";
+//   }, []);
+
+//   const unlockAudio = async () => {
+//     try {
+//       if (!audioRef.current) return;
+//       await audioRef.current.play();
+//       audioRef.current.pause();
+//       audioRef.current.currentTime = 0;
+//       setAudioUnlocked(true);
+//       toast.success("Sound Enabled");
+//     } catch {
+//       toast.error("Tap again to enable sound");
+//     }
+//   };
+
+//   const fetchProfile = async () => {
+//     try {
+//       const { data } = await axios.get(`${riderService}/api/rider/myprofile`, {
+//         headers: {
+//           Authorization: `Bearer ${localStorage.getItem("token")}`,
+//         },
+//       });
+
+//       setProfile(data || null);
+//     } catch {
+//       setProfile(null);
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   const fetchCurrentOrder = async () => {
+//     try {
+//       const { data } = await axios.get(
+//         `${riderService}/api/rider/order/current`,
+//         {
+//           headers: {
+//             Authorization: `Bearer ${localStorage.getItem("token")}`,
+//           },
+//         }
+//       );
+//       setCurrentOrder(data.order);
+//     } catch (err) {
+//       console.log(err);
+//       setCurrentOrder(null);
+//     }
+//   };
+
+//   useEffect(() => {
+//     if (user?.role === "rider") fetchProfile();
+//     else setLoading(false);
+//   }, [user]);
+
+//   useEffect(() => {
+//     fetchCurrentOrder();
+//   }, []);
+
+//   useEffect(() => {
+//     if (!socket) return;
+
+//     const onOrderAvailable = ({ orderId }: { orderId: string }) => {
+//       setIncomingOrders((prev) =>
+//         prev.includes(orderId) ? prev : [...prev, orderId]
+//       );
+
+//       if (audioUnlocked && audioRef.current) {
+//         audioRef.current.currentTime = 0;
+//         audioRef.current.play().catch(() => {});
+//       }
+
+//       setTimeout(() => {
+//         setIncomingOrders((prev) => prev.filter((id) => id !== orderId));
+//       }, 10000);
+//     };
+
+//     socket.on("order:available", onOrderAvailable);
+
+//     return () => {
+//       socket.off("order:available", onOrderAvailable);
+//     };
+//   }, [socket, audioUnlocked]);
+
+//   const toggleAvailiblity = async () => {
+//     if (!navigator.geolocation) {
+//       toast.error("Location Access Required");
+//       return;
+//     }
+
+//     setToggling(true);
+
+//     navigator.geolocation.getCurrentPosition(async (pos) => {
+//       try {
+//         await axios.patch(
+//           `${riderService}/api/rider/toggle`,
+//           {
+//             isAvailble: !profile?.isAvailble,
+//             latitude: pos.coords.latitude,
+//             longitude: pos.coords.longitude,
+//           },
+//           {
+//             headers: {
+//               Authorization: `Bearer ${localStorage.getItem("token")}`,
+//             },
+//           }
+//         );
+
+//         toast.success(
+//           profile?.isAvailble ? "You are offline" : "You are online"
+//         );
+//         fetchProfile();
+//       } catch (error: any) {
+//         toast.error(error?.response?.data?.message || "Something went wrong");
+//       } finally {
+//         setToggling(false);
+//       }
+//     });
+//   };
+
+//   // ✅ FIXED HERE (removed unused error param)
+//   const handleSubmit = async () => {
+//     if (!navigator.geolocation) {
+//       toast.error("Location not supported");
+//       return;
+//     }
+
+//     setSubmitting(true);
+
+//     navigator.geolocation.getCurrentPosition(
+//       async (pos) => {
+//         try {
+//           const formData = new FormData();
+
+//           formData.append("phoneNumber", phoneNumber);
+//           formData.append("aadharNumber", aadharNumber);
+//           formData.append("drivingLicenseNumber", drivingLicenseNumber);
+//           formData.append("latitude", pos.coords.latitude.toString());
+//           formData.append("longitude", pos.coords.longitude.toString());
+
+//           if (image) {
+//             formData.append("file", image);
+//           }
+
+//           const { data } = await axios.post(
+//             `${riderService}/api/rider/new`,
+//             formData,
+//             {
+//               headers: {
+//                 Authorization: `Bearer ${localStorage.getItem("token")}`,
+//               },
+//             }
+//           );
+
+//           toast.success(data.message);
+//           fetchProfile();
+//         } catch (error: any) {
+//           toast.error(
+//             error?.response?.data?.message || "Something went wrong"
+//           );
+//         } finally {
+//           setSubmitting(false);
+//         }
+//       },
+//       () => {
+//         toast.error("Location permission denied");
+//         setSubmitting(false);
+//       }
+//     );
+//   };
+
+//   if (user?.role !== "rider") {
+//     return (
+//       <div className="flex min-h-[60vh] items-center justify-center text-gray-500">
+//         You are not registered as a rider
+//       </div>
+//     );
+//   }
+
+//   if (loading) {
+//     return (
+//       <div className="flex min-h-[60vh] items-center justify-center text-gray-500">
+//         Loading rider details...
+//       </div>
+//     );
+//   }
+
+//   if (!profile) {
+//     return (
+//       <div className="min-h-screen bg-gray-50 px-4 py-6">
+//         <div className="mx-auto max-w-lg rounded-xl bg-white p-6 shadow-sm space-y-5">
+//           <h1 className="text-xl font-semibold">Add Your Profile</h1>
+//           <input
+//             type="number"
+//             placeholder="Aadhar number"
+//             value={aadharNumber}
+//             onChange={(e) => setaadharNumber(e.target.value)}
+//             className="w-full rounded-lg border px-4 py-2 text-sm outline-none"
+//           />
+//           <input
+//             type="number"
+//             placeholder="Contact Number"
+//             value={phoneNumber}
+//             onChange={(e) => setPhoneNumber(e.target.value)}
+//             className="w-full rounded-lg border px-4 py-2 text-sm outline-none"
+//           />
+//           <input
+//             type="text"
+//             placeholder="Driving Licence"
+//             value={drivingLicenseNumber}
+//             onChange={(e) => setDrivingLicenseNumber(e.target.value)}
+//             className="w-full rounded-lg border px-4 py-2 text-sm outline-none"
+//           />
+//           <label className="flex cursor-pointer items-center gap-3 rounded-lg border p-4 text-sm text-gray-600 hover:bg-gray-50">
+//             <BiUpload className="h-5 w-5 text-red-500" />
+//             {image ? image.name : "Upload your image"}
+//             <input
+//               type="file"
+//               accept="image/*"
+//               hidden
+//               onChange={(e) => setImage(e.target.files?.[0] || null)}
+//             />
+//           </label>
+//           <button
+//             className="w-full rounded-lg py-3 text-sm font-semibold text-white bg-[#e23744]"
+//             disabled={submitting}
+//             onClick={handleSubmit}
+//           >
+//             {submitting ? "Submitting..." : "Add Profile"}
+//           </button>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   return <div className="space-y-4">Dashboard UI continues...</div>;
+// };
+
+// export default RiderDashboard;
